@@ -16,7 +16,8 @@ from pymongo.server_api import ServerApi
 
 
 def get_db_connection():
-    uri = "mongodb+srv://vaib:12345@cluster0.gzqe7.mongodb.net/?appName=Cluster0"
+    # uri = "mongodb+srv://vaib:12345@cluster0.gzqe7.mongodb.net/?appName=Cluster0"
+    uri = st.secrets["mongodb"]["uri"]
     client = MongoClient(uri, server_api=ServerApi('1'))
     db = client["checkupDB"]
     return db
@@ -123,7 +124,8 @@ def get_all_reports():
 def get_nvidia_client():
     return OpenAI(
         base_url="https://integrate.api.nvidia.com/v1",
-        api_key=st.session_state.nvidia_api_key
+        # api_key=st.session_state.nvidia_api_key
+        api_key=st.secrets["nvidia"]["api_key"]
     )
 
 # Function to generate questions using NVIDIA NIM API
@@ -492,13 +494,13 @@ def show_patient_checkup():
 
     # Sidebar for patient actions
     with st.sidebar:
-        st.title("🏥 Configuration")
+        st.title("🏥 PatientInfo")
 
         # API Key Input
-        nvidia_api_key = st.text_input(
-            "NVIDIA NIM API Key", value="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", type="password")
-        if nvidia_api_key:
-            st.session_state.nvidia_api_key = nvidia_api_key
+        # nvidia_api_key = st.text_input(
+        #     "NVIDIA NIM API Key", value="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", type="password")
+        # if nvidia_api_key:
+        #     st.session_state.nvidia_api_key = nvidia_api_key
 
         st.divider()
 
