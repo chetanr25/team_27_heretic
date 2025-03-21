@@ -2,3 +2,4 @@ venv
 data
 patient_records
 007_20250321_235049.txt
+.streamlit/secrets.toml
