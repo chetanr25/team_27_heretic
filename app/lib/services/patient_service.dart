@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+// import 'package:med_info/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../constants.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
@@ -13,58 +15,66 @@ class PatientService {
     }
 
     try {
-      final requestBody = {
-        'patientId': "67dd688de544e99df474c59f", // patientId,
-      };
+      final requestBody = {'patientId': patientId};
 
       print('Making request to: ${ApiConstants.scanQrEndpoint}');
       print('Request body: ${json.encode(requestBody)}');
-
-      final token =
-          "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2RkNjkwY2U1NDRlOTlkZjQ3NGM1YmIiLCJpYXQiOjE3NDI1NzIxNjksImV4cCI6MTc0MjY1ODU2OX0.vjOeIaHUeXlTyCOCLhZ9FBe0vS5lmTYOJx5owHsIATM";
-
-      final response = await http
-          .post(
-            Uri.parse(ApiConstants.scanQrEndpoint),
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-              'Accept': 'application/json',
-            },
-            body: json.encode(requestBody),
-          )
-          .timeout(
-            const Duration(seconds: 10),
-            onTimeout: () {
-              throw TimeoutException('Request timed out');
-            },
-          );
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString('auth_token');
+      final role = prefs.getString('role');
+      print('Role: $role');
+      final url =
+          role == 'patient'
+              ? ApiConstants.patientScanQrEndpoint
+              : ApiConstants.scanQrEndpoint;
+      // final token =
+      //     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiI2N2RkNjkwY2U1NDRlOTlkZjQ3NGM1YmIiLCJpYXQiOjE3NDI1NzIxNjksImV4cCI6MTc0MjY1ODU2OX0.vjOeIaHUeXlTyCOCLhZ9FBe0vS5lmTYOJx5owHsIATM";
+      // SharedPreferences.getInstance().then((prefs) {
+      //   final role = prefs.getString('role');
+      //   print('Role: $role');
+      //   false // role != 'patient'
+      //       ? ApiConstants.scanQrEndpoint
+      //       : ApiConstants.patientScanQrEndpoint;
+      // });
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+          'Accept': 'application/json',
+        },
+        body: json.encode(requestBody),
+      );
 
       print('Response status: ${response.statusCode}');
       print('Response body: ${response.body}');
 
+      // First check for 403 status
+      if (response.statusCode >= 400) {
+        final errorData = json.decode(response.body);
+        throw UnauthorizedException(
+          message: errorData['message'],
+          details: errorData['details'] ?? {},
+        );
+      }
+
+      // Then check for other error status codes
       if (response.statusCode >= 400) {
         throw HttpException(
           'Server error ${response.statusCode}: ${response.body}',
         );
       }
 
-      if (response.statusCode == 200) {
+      // Finally handle success cases
+      if (response.statusCode == 200 || response.statusCode == 201) {
         final decodedResponse = json.decode(response.body);
-        print('Decoded response: $decodedResponse');
         return decodedResponse;
       }
 
       throw Exception('Unexpected response: ${response.statusCode}');
-    } catch (e, stackTrace) {
-      print('Error in processQrScan: $e');
-      print('Stack trace: $stackTrace');
-
-      // For development, rethrow to see the error in the debugger
+    } catch (e) {
+      print('Error: $e');
       rethrow;
-
-      // In production, return dummy data
-      // return _getDummyPatientData();
     }
   }
 
@@ -84,4 +94,11 @@ class _DevHttpOverrides extends HttpOverrides {
     return super.createHttpClient(context)
       ..badCertificateCallback = (cert, host, port) => true;
   }
+}
+
+class UnauthorizedException implements Exception {
+  final String message;
+  final Map<String, dynamic> details;
+
+  UnauthorizedException({required this.message, required this.details});
 }

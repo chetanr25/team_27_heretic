@@ -395,7 +395,7 @@ class _SignupScreenState extends State<SignupScreen> {
     });
 
     try {
-      var userData = {
+      Map<String, dynamic> userData = {
         'name': _nameController.text,
         'email': _emailController.text,
         'password': _passwordController.text,
@@ -404,7 +404,7 @@ class _SignupScreenState extends State<SignupScreen> {
       };
 
       if (_selectedRole == 'medical_staff') {
-        userData = {
+        userData['hospital'] = {
           'name': _hospitalNameController.text,
           'address': _hospitalAddressController.text,
           'department': _departmentController.text,
@@ -415,7 +415,7 @@ class _SignupScreenState extends State<SignupScreen> {
       }
 
       final response = await _authService.signup(userData);
-
+      print('Response: $response');
       if (!mounted) return;
 
       // Navigate to scanner page on success
