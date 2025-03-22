@@ -3,3 +3,4 @@ data
 patient_reports
 007_20250321_235049.txt
 streamlit
+.streamlit/secrets.toml
