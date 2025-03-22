@@ -9,6 +9,8 @@ class AuthService {
 
   Future<Map<String, dynamic>> signup(Map<String, dynamic> userData) async {
     try {
+      print('Making request to: ${ApiConstants.registerEndpoint}');
+      print('Request body: ${json.encode(userData)}');
       final response = await http.post(
         Uri.parse(ApiConstants.registerEndpoint),
         headers: {'Content-Type': 'application/json'},
@@ -16,13 +18,15 @@ class AuthService {
       );
       print(response.body);
       print(response.statusCode);
-      if (response.statusCode == 200) {
-        final responseData = json.decode(response.body);
-
+      final responseData = json.decode(response.body);
+      if (response.statusCode == 200 || response.statusCode == 201) {
         // Store token and user data in SharedPreferences
         await _saveAuthData(responseData['token'], responseData['user']);
 
         return responseData;
+      } else if (response.statusCode == 400 || response.statusCode == 403) {
+        return responseData;
+        throw Exception('Registration failed: ${response.body}');
       } else {
         throw Exception('Registration failed: ${response.body}');
       }
@@ -38,6 +42,7 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(tokenKey, token);
     await prefs.setString(userKey, json.encode(userData));
+    await prefs.setString('role', userData['role']);
   }
 
   Future<bool> isLoggedIn() async {

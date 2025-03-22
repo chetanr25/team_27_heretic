@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:med_info/services/all_details.dart'
+    show AllDetails, GetAllDetailsGenerateQuestions;
 import 'package:qr_code_scanner_plus/qr_code_scanner_plus.dart';
 import 'dart:convert';
 import '../services/patient_service.dart';
 import 'patient_details_screen.dart';
+import 'access_denied_screen.dart';
 
 class QRScannerScreen extends StatefulWidget {
   const QRScannerScreen({super.key});
@@ -23,7 +26,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     super.dispose();
   }
 
-  Future<void> _processQRData(String qrData) async {
+  Future<void> _handleScan(String scanData) async {
+    print('Scan data: $scanData');
     if (isProcessing) return;
 
     setState(() {
@@ -31,39 +35,49 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
     });
 
     try {
-      // Parse QR data
-      final qrJson = json.decode(qrData);
-      print(qrJson);
-      // if (qrJson['type'] != 'patient_id') {
-      //   throw Exception('Invalid QR code type');
-      // }
-
-      // Pause the scanner
+      // Pause camera while processing
       await controller?.pauseCamera();
 
-      // Process the scan
-      final patientData = await _patientService.processQrScan(qrJson['id']);
-
-      // Navigate to details screen
+      final id = jsonDecode(scanData)['id'];
+      final patientData = await _patientService.processQrScan(id);
       if (!mounted) return;
-      await Navigator.of(context).push(
+
+      await Navigator.push(
+        context,
         MaterialPageRoute(
           builder: (context) => PatientDetailsScreen(patientData: patientData),
         ),
       );
+    } on UnauthorizedException catch (e) {
+      if (!mounted) return;
 
-      // Resume the scanner after returning from details screen
-      await controller?.resumeCamera();
-    } catch (e) {
-      print(e);
-      ScaffoldMessenger.of(
+      await Navigator.push(
         context,
-      ).showSnackBar(const SnackBar(content: Text('Invalid QR Code')));
+        MaterialPageRoute(
+          builder:
+              (context) =>
+                  AccessDeniedScreen(message: e.message, details: e.details),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).clearSnackBars();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      setState(() {
+        isProcessing = false;
+      });
     } finally {
+      // Resume camera and reset processing state
       if (mounted) {
         setState(() {
           isProcessing = false;
         });
+        await controller?.resumeCamera();
       }
     }
   }
@@ -71,7 +85,21 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('QR Scanner')),
+      appBar: AppBar(
+        title: const Text('QR Scanner'),
+        actions: [
+          IconButton(
+            onPressed: () {
+              GetAllDetailsGenerateQuestions().getDetails(context);
+            },
+            icon: const Icon(Icons.emoji_events),
+          ),
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/login'),
+            icon: const Icon(Icons.logout),
+          ),
+        ],
+      ),
       body: Stack(
         children: [
           QRView(
@@ -79,9 +107,8 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
             onQRViewCreated: (QRViewController controller) {
               this.controller = controller;
               controller.scannedDataStream.listen((scanData) {
-                // print('hello hello $scanData');
                 if (scanData.code != null) {
-                  _processQRData(scanData.code!);
+                  _handleScan(scanData.code!);
                 }
               });
             },
@@ -89,7 +116,11 @@ class _QRScannerScreenState extends State<QRScannerScreen> {
           if (isProcessing)
             Container(
               color: Colors.black54,
-              child: const Center(child: CircularProgressIndicator()),
+              child: const Center(
+                child: CircularProgressIndicator(
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
             ),
         ],
       ),
