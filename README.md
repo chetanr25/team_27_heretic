@@ -57,11 +57,11 @@ ResQ revolutionizes healthcare by providing:
 
 | Layer        | Technology        |
 |--------------|-------------------|
-| Frontend     | React.js, Tailwind CSS |
+| Frontend     | React.js, Tailwind CSS, Streamlit |
 | Backend      | Node.js, Express.js |
 | Database     | MongoDB, Atlas |
 | Security     | AES-256 Encryption, RBAC, JWT |
-| AI/ML        | GenAI Models for Health Analysis |
+| AI/ML        | GenAI Models for Health Analysis, NVDIA NIM |
 | Devops       | Docker, Docker compose, kubernetes |
 | Application  | Flutter, Dart |
 
